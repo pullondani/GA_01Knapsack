@@ -1,11 +1,14 @@
 from pathlib import Path
 from random import randint, choices, random
-import csv, numpy, sys
+import csv
+import numpy
+import sys
 
 NUM_GEN = 100
-POP_SIZE = 50
-ELITISM = 0.2
+POP_SIZE = 100
+ELITISM = 0.1
 MUTATION_CHANCE = 0.1
+ALPHA = 0.1
 
 
 def read_file(file_name):
@@ -21,17 +24,15 @@ def read_file(file_name):
 
 
 def calc_fitness_knapsack(individual, values, weights, capacity):
-    alpha = 4  # TODO Figure out what alpha should be
     value_total = 0
     weight_total = 0
 
     for i in range(len(individual)):
         value_total += values[i] * individual[i]
         weight_total += weights[i] * individual[i]
-    
-    curr_capacity = max(0, weight_total - capacity)
-    fit = value_total - alpha * curr_capacity
 
+    curr_capacity = max(0, weight_total - capacity)
+    fit = value_total - ALPHA * curr_capacity
     # print(weight_total, capacity, 'UNDER' if weight_total <= capacity else 'OVER', fit)
 
     return fit
@@ -63,10 +64,10 @@ def roulette_selection(prev_pop, prev_fits, k):
     except ValueError:
         print(fitness_proportions)
         print('************* ValueError *************')
-        print('This is due to choices() requiring a set of weights that sum to greater than 0')
+        print(
+            'This is due to choices() requiring a set of weights that sum to greater than 0')
         print('ABORTING RUN, PLEASE TRY AGAIN.')
         exit()
-
 
 
 # Assume pop. length of 2
@@ -86,7 +87,7 @@ def mutation_selection(pop, indiv_len):
             flip_ind = randint(0, indiv_len-1)
             indiv[flip_ind] = 0 if indiv[flip_ind] == 1 else 1
             # print('MUTATION! AT INDEX ' + str(flip_ind), clone, '->', indiv)
-    
+
     return pop
 
 
@@ -98,7 +99,7 @@ def create_new_pop(prev_pop, prev_fits, indiv_len):
         # Select TWO parents with roulette wheel
         k = 2 if POP_SIZE - len(new_pop) > 2 else 1
         roulette = roulette_selection(prev_pop, prev_fits, k)
-        
+
         # apply one-point crossover to them
         crossover = crossover_selection(
             roulette, indiv_len) if len(roulette) == 2 else roulette
@@ -143,9 +144,6 @@ def run_knapsack(data, individual_len, capacity):
 
 def main():
     info, data = read_file(sys.argv[1])
-    print(info)
-    print(len(data))
-    print(data[-1])
 
     # Setup up initial population and variables
     individual_len = info[0]
@@ -154,15 +152,12 @@ def main():
 
     vs = [x[0] for x in data]
     total = 0
-    print(solution)
-    for i, value in enumerate(vs):
-        if solution[i] == 1:
-            total += value
-            # print(value)
-    
-    # print(vs)
-    # print(total)
+    if solution is not None:
+        for i, value in enumerate(vs):
+            if solution[i] == 1:
+                total += value
 
+    print(total)
 
 
 if __name__ == '__main__':
