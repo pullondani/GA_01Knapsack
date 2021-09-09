@@ -3,12 +3,16 @@ from random import randint, choices, random
 import csv
 import numpy
 import sys
+from datetime import datetime
+from copy import deepcopy
+import matplotlib.pyplot as plt
+from statistics import stdev
 
-NUM_GEN = 100
-POP_SIZE = 100
-ELITISM = 0.1
+NUM_GEN = 300
+POP_SIZE = 300
+ELITISM = 0.9
 MUTATION_CHANCE = 0.1
-ALPHA = 0.1
+ALPHA = 2.1
 
 
 def read_file(file_name):
@@ -33,15 +37,14 @@ def calc_fitness_knapsack(individual, values, weights, capacity):
 
     curr_capacity = max(0, weight_total - capacity)
     fit = value_total - ALPHA * curr_capacity
-    # print(weight_total, capacity, 'UNDER' if weight_total <= capacity else 'OVER', fit)
 
     return fit
 
 
 # Deep copy arrays and then do elitism.
 def elitism_selection(pop, fits):
-    clone = pop.copy()
-    clone_fit = fits.copy()
+    clone = deepcopy(pop)
+    clone_fit = deepcopy(fits)
     elitists = []
 
     for __ in range(round(ELITISM * POP_SIZE)):
@@ -69,9 +72,11 @@ def roulette_selection(prev_pop, prev_fits, k):
         print('ABORTING RUN, PLEASE TRY AGAIN.')
         exit()
 
+# Take two indiv's (pop) and do crossover
 
-# Assume pop. length of 2
+
 def crossover_selection(pop, indiv_len):
+    # Crossover is pointless if you just swap the whole list
     rand = randint(1, indiv_len - 2)
     crossover = []
     crossover.append(pop[0][:rand] + pop[1][rand:])
@@ -83,7 +88,6 @@ def crossover_selection(pop, indiv_len):
 def mutation_selection(pop, indiv_len):
     for indiv in pop:
         if random() <= MUTATION_CHANCE:
-            # clone = indiv.copy()
             flip_ind = randint(0, indiv_len-1)
             indiv[flip_ind] = 0 if indiv[flip_ind] == 1 else 1
             # print('MUTATION! AT INDEX ' + str(flip_ind), clone, '->', indiv)
@@ -114,9 +118,8 @@ def create_new_pop(prev_pop, prev_fits, indiv_len):
 
 
 def run_knapsack(data, individual_len, capacity):
-    gen_left = NUM_GEN
     # Randomly initialise individual to have either 0 or 1 for knapsack
-    pop = [[randint(0, 1) for __ in range(individual_len)]
+    pop = [[1 if random() <= 0.1 else 0 for __ in range(individual_len)]
            for ___ in range(POP_SIZE)]
     pop_fit = [None] * POP_SIZE
 
@@ -125,11 +128,13 @@ def run_knapsack(data, individual_len, capacity):
 
     best_feasible = None
     best_fit = 0
+    fitness_history = []
 
-    while (gen_left > 0):
+    for __ in range(NUM_GEN):
         # Calc fitness of current pop
         for i, ind in enumerate(pop):
             pop_fit[i] = calc_fitness_knapsack(ind, values, weights, capacity)
+
         # Find new best feasible
         best_ind = max(range(len(pop_fit)), key=pop_fit.__getitem__)
         if pop_fit[best_ind] > best_fit:
@@ -137,18 +142,20 @@ def run_knapsack(data, individual_len, capacity):
             best_fit = pop_fit[best_ind]
 
         pop = create_new_pop(pop, pop_fit, individual_len)
-        gen_left -= 1
+        pop_fit.sort()
+        fitness_history.append(sum(pop_fit[-5:]) / 5)
+        pop_fit = [None] * POP_SIZE
 
-    return best_feasible
+    return best_feasible, fitness_history
 
 
-def main():
+def run():
     info, data = read_file(sys.argv[1])
 
     # Setup up initial population and variables
     individual_len = info[0]
     capacity = info[1]
-    solution = run_knapsack(data, individual_len, capacity)
+    solution, fitness_history = run_knapsack(data, individual_len, capacity)
 
     vs = [x[0] for x in data]
     total = 0
@@ -157,8 +164,30 @@ def main():
             if solution[i] == 1:
                 total += value
 
-    print(total)
+    return fitness_history, total
 
+
+def main():
+    histories = []
+    # for count in range(5):
+    start = datetime.now()
+    # print('STARTING RUN NUMBER: ' + str(count))
+    fitness_history, total = run()
+    # print('Round ' + str(count) + ' total: ', total)
+    histories.append(total)
+    end = datetime.now()
+    print('Time elapsed: ' + str(end - start))
+
+    print(total)
+    plt.plot(list(range(NUM_GEN)), fitness_history, label='Mean Fitness')
+    plt.legend()
+    plt.title('Fitness through the generations')
+    plt.xlabel('Generations')
+    plt.ylabel('Fitness')
+    plt.show()
+
+    # print('Standard Deviation:', stdev(histories))
+    # print('Mean Fitness:', sum(histories) / len(histories))
 
 if __name__ == '__main__':
     main()
