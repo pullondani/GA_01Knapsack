@@ -6,13 +6,12 @@ import sys
 from datetime import datetime
 from copy import deepcopy
 import matplotlib.pyplot as plt
-from statistics import stdev
 
 NUM_GEN = 300
 POP_SIZE = 300
-ELITISM = 0.9
+ELITISM = 0.1
 MUTATION_CHANCE = 0.1
-ALPHA = 2.1
+ALPHA = 4.1
 
 
 def read_file(file_name):
